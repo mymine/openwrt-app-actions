@@ -207,7 +207,10 @@ jobs:
           CACHE_NAME: 'dl-cache'
         with:
           path: ${{ github.workspace }}/.dl
-          key: ${{ env.CACHE_NAME }}
+          key: ${{ env.CACHE_NAME }}-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ env.CACHE_NAME }}-${{ github.ref_name }}-
+          enableCrossOsArchive: true
 
       - name: Download sources
         id: download
