@@ -102,6 +102,7 @@ jobs:
       - name: Write Config
         run: |
           cat <<EOF >${SDK_NAME}/.config
+          CONFIG_CCACHE=y
           # CONFIG_SIGNED_PACKAGES is not set
           CONFIG_LUCI_LANG_zh_Hans=y
           CONFIG_LUCI_LANG_zh-cn=y
