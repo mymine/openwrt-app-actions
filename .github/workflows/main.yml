@@ -209,22 +209,28 @@ jobs:
           path: ${{ github.workspace }}/.dl
           key: ${{ env.CACHE_NAME }}
 
-      - name: Download sources (verbose + log)
+      - name: Download sources
         id: download
         if: steps.defconfig.outputs.status == 'success'
         run: |
-          set -euxo pipefail
           [ -d "${{ github.workspace }}/.dl" ] || mkdir -p "${{ github.workspace }}/.dl"
           for sdk in ~/openwrt-sdk ~/openwrt-sdk-apk; do
             echo "### Download for SDK $sdk ###"
             cd $sdk
             rm -rf dl
             ln -s "${{ github.workspace }}/.dl" dl
-
-            # 用 -j1 降低并发导致的“部分下载/竞争”概率，并保证日志更可读
-            make -j4 download || make -j1 V=s download 2>&1 | tee /tmp/openwrt-download.log
+            make -j4 download
           done
           echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: ReDownload
+        if: failure() && steps.defconfig.outputs.status == 'success'
+        run: |
+          set -euxo pipefail
+          for sdk in ~/openwrt-sdk ~/openwrt-sdk-apk; do
+            cd $sdk
+            make -j1 V=s download 2>&1 | tee /tmp/openwrt-download.log
+          done
 
       - name: Diagnose hash mismatch in downloads
         if: failure() && steps.defconfig.outputs.status == 'success'
@@ -290,14 +296,6 @@ jobs:
 
           # 让 step 明确失败，便于你在 Actions UI 里一眼看到诊断输出
           false
-          
-      - name: ReDownload
-        if: failure() && steps.defconfig.outputs.status == 'success'
-        run: |
-          for sdk in ~/openwrt-sdk ~/openwrt-sdk-apk; do
-            cd $sdk
-            make -j1 V=s download
-          done
 
       - name: 'Restore ipk ccache from cache'
         id: ccache-cache
@@ -322,8 +320,7 @@ jobs:
         if: steps.download.outputs.status == 'success'
         run: |
           for sdk in ~/openwrt-sdk ~/openwrt-sdk-apk; do
-            cd $sdk
-            make -j4 package/compile
+            time make -C $sdk -j4 package/compile
           done
           echo "status=success" >> $GITHUB_OUTPUT
 
